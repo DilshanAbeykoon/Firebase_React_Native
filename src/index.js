@@ -31,6 +31,19 @@ const UploadMediaFile = () => {
         }
     };
 
+    const pickImage = async () => {
+        let result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 1,
+        });
+
+        if (!result.canceled) {
+            setImage(result.assets[0].uri);
+        }
+    };
+
     const uploadMedia = async () => {
         if (!imageName.trim()) {
             Alert.alert('Please enter a name for the image.');
@@ -72,6 +85,9 @@ const UploadMediaFile = () => {
             <TouchableOpacity style={styles.selectButton} onPress={takePhoto}>
                 <Text style={styles.buttonText}>Take a Photo</Text>
             </TouchableOpacity>
+            <TouchableOpacity style={styles.selectButton} onPress={pickImage}>
+                <Text style={styles.buttonText}>Pick an Image</Text>
+            </TouchableOpacity>
             <View style={styles.imageContainer}>
                 {image && (
                     <>
@@ -82,6 +98,7 @@ const UploadMediaFile = () => {
                         <TextInput
                             style={styles.textInput}
                             placeholder="Enter image name"
+                            placeholderTextColor="#999"
                             value={imageName}
                             onChangeText={setImageName}
                         />
@@ -111,6 +128,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'blue',
         alignItems: 'center',
         justifyContent: 'center',
+        marginVertical: 10,
     },
     buttonText: {
         color: '#fff',
