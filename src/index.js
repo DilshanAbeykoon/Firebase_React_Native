@@ -1,13 +1,16 @@
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert, Image, TextInput } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert, Image, TextInput, Dimensions } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { firebase } from '../config';
-import React, { useState, useEffect } from 'react';
 import * as FileSystem from 'expo-file-system';
 
-const UploadMediaFile = () => {
+const UploadWithAuth = () => {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [image, setImage] = useState(null);
     const [uploading, setUploading] = useState(false);
     const [imageName, setImageName] = useState('');
+    const [loggedIn, setLoggedIn] = useState(false);
 
     useEffect(() => {
         (async () => {
@@ -18,15 +21,27 @@ const UploadMediaFile = () => {
         })();
     }, []);
 
+    const handleLogin = async () => {
+        try {
+            await firebase.auth().signInWithEmailAndPassword(email, password);
+            setLoggedIn(true);
+            Alert.alert('Login Successful!');
+            setEmail('');
+            setPassword('');
+        } catch (error) {
+            Alert.alert('Login Error', error.message);
+        }
+    };
+
     const takePhoto = async () => {
         let result = await ImagePicker.launchCameraAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsEditing: true,
-            aspect: [4, 3],
+            aspect: [16, 9],
             quality: 1,
         });
 
-        if (!result.canceled) {
+        if (!result.cancelled) {
             setImage(result.assets[0].uri);
         }
     };
@@ -39,7 +54,7 @@ const UploadMediaFile = () => {
             quality: 1,
         });
 
-        if (!result.canceled) {
+        if (!result.cancelled) {
             setImage(result.assets[0].uri);
         }
     };
@@ -82,37 +97,59 @@ const UploadMediaFile = () => {
 
     return (
         <SafeAreaView style={styles.container}>
-            <TouchableOpacity style={styles.selectButton} onPress={takePhoto}>
-                <Text style={styles.buttonText}>Take a Photo</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.selectButton} onPress={pickImage}>
-                <Text style={styles.buttonText}>Pick an Image</Text>
-            </TouchableOpacity>
-            <View style={styles.imageContainer}>
-                {image && (
-                    <>
-                        <Image
-                            source={{ uri: image }}
-                            style={{ width: 300, height: 300 }}
-                        />
-                        <TextInput
-                            style={styles.textInput}
-                            placeholder="Enter image name"
-                            placeholderTextColor="#999"
-                            value={imageName}
-                            onChangeText={setImageName}
-                        />
-                        <TouchableOpacity style={styles.uploadButton} onPress={uploadMedia}>
-                            <Text style={styles.buttonText}>Upload Image</Text>
-                        </TouchableOpacity>
-                    </>
-                )}
-            </View>
+            {!loggedIn ? (
+                <View style={styles.authContainer}>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Email"
+                        onChangeText={setEmail}
+                        value={email}
+                    />
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Password"
+                        secureTextEntry
+                        onChangeText={setPassword}
+                        value={password}
+                    />
+                    
+                    <TouchableOpacity style={styles.button} onPress={handleLogin}>
+                        <Text style={styles.buttonText}>Login</Text>
+                    </TouchableOpacity>
+                </View>
+            ) : (
+                <View style={styles.imageContainer}>
+                    <TouchableOpacity style={styles.selectButton} onPress={takePhoto}>
+                        <Text style={styles.buttonText}>Take a Photo</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.selectButton} onPress={pickImage}>
+                        <Text style={styles.buttonText}>Pick an Image</Text>
+                    </TouchableOpacity>
+
+                    {image && (
+                        <View style={styles.imagePreviewContainer}>
+                            <Image
+                                source={{ uri: image }}
+                                style={styles.imagePreview}
+                                resizeMode="contain"
+                            />
+                            <TextInput
+                                style={styles.textInput}
+                                placeholder="Enter image name"
+                                placeholderTextColor="#999"
+                                value={imageName}
+                                onChangeText={setImageName}
+                            />
+                            <TouchableOpacity style={styles.uploadButton} onPress={uploadMedia}>
+                                <Text style={styles.buttonText}>Upload Image</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
+                </View>
+            )}
         </SafeAreaView>
     );
 };
-
-export default UploadMediaFile;
 
 const styles = StyleSheet.create({
     container: {
@@ -120,6 +157,32 @@ const styles = StyleSheet.create({
         backgroundColor: '#000',
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    authContainer: {
+        width: '100%',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    input: {
+        width: '80%',
+        padding: 15,
+        marginBottom: 10,
+        backgroundColor: '#333',
+        color: '#fff',
+        borderRadius: 8,
+    },
+    button: {
+        width: '80%',
+        padding: 15,
+        backgroundColor: 'blue',
+        alignItems: 'center',
+        borderRadius: 8,
+        marginTop: 10,
+    },
+    buttonText: {
+        color: '#fff',
+        fontSize: 18,
+        fontWeight: 'bold',
     },
     selectButton: {
         borderRadius: 5,
@@ -129,11 +192,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         marginVertical: 10,
-    },
-    buttonText: {
-        color: '#fff',
-        fontSize: 18,
-        fontWeight: 'bold',
     },
     uploadButton: {
         borderRadius: 5,
@@ -149,6 +207,14 @@ const styles = StyleSheet.create({
         marginBottom: 50,
         alignItems: 'center',
     },
+    imagePreviewContainer: {
+        alignItems: 'center',
+        marginTop: 20,
+    },
+    imagePreview: {
+        width: Dimensions.get('window').width - 40, // Use the full width of the screen with some padding
+        height: Dimensions.get('window').height / 2, // Use half of the screen height for better visibility
+    },
     textInput: {
         borderColor: 'gray',
         borderWidth: 1,
@@ -159,3 +225,5 @@ const styles = StyleSheet.create({
         color: '#fff',
     },
 });
+
+export default UploadWithAuth;
